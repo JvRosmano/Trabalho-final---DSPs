@@ -61,9 +61,9 @@ Plecs {
     Index         "2"
   }
   Schematic {
-    Location      [0, 23; 1536, 773]
-    ZoomFactor    0.583096
-    SliderPosition [438, 0]
+    Location      [0, 26; 1536, 776]
+    ZoomFactor    1.14437
+    SliderPosition [2203, 764]
     ShowBrowser   off
     BrowserWidth  100
     Component {
@@ -3748,7 +3748,7 @@ Plecs {
       LabelPosition south
       Parameter {
         Variable      "K"
-        Value         "1.5/180"
+        Value         "1.5/200"
         Show          off
       }
       Parameter {
@@ -3782,7 +3782,7 @@ Plecs {
       LabelPosition south
       Parameter {
         Variable      "K"
-        Value         "1.5/180"
+        Value         "1.5/200"
         Show          off
       }
       Parameter {
@@ -3816,7 +3816,7 @@ Plecs {
       LabelPosition south
       Parameter {
         Variable      "K"
-        Value         "1.5/180"
+        Value         "1.5/200"
         Show          off
       }
       Parameter {
@@ -3850,7 +3850,7 @@ Plecs {
       LabelPosition south
       Parameter {
         Variable      "K"
-        Value         "1.5/180"
+        Value         "1.5/200"
         Show          off
       }
       Parameter {
@@ -3884,7 +3884,7 @@ Plecs {
       LabelPosition south
       Parameter {
         Variable      "K"
-        Value         "1.5/180"
+        Value         "1.5/200"
         Show          off
       }
       Parameter {
@@ -3918,7 +3918,7 @@ Plecs {
       LabelPosition south
       Parameter {
         Variable      "K"
-        Value         "1.5/180"
+        Value         "1.5/200"
         Show          off
       }
       Parameter {
@@ -4318,11 +4318,11 @@ Plecs {
       Direction     up
       Flipped       off
       LabelPosition south
-      Location      [448, 168; 798, 496]
+      Location      [448, 168; 798, 505]
       State         "AAAA/wAAAAD9AAAAAgAAAAEAAAAAAAAAAPwCAAAAA/sAAAAQAFoAbwBvA"
 "G0AQQByAGUAYQAAAAAA/////wAAADYA////+wAAABQAUwBhAHYAZQBkAFYAaQBlAHcAcwAAAAAA//"
 "///wAAAGgA////+wAAAAwAVAByAGEAYwBlAHMAAAAAAP////8AAABoAP///wAAAAMAAAAAAAAAAPw"
-"BAAAAAfsAAAAUAEQAYQB0AGEAVwBpAGQAZwBlAHQAAAAAAP////8AAABQAP///wAAAV4AAAEtAAAA"
+"BAAAAAfsAAAAUAEQAYQB0AGEAVwBpAGQAZwBlAHQAAAAAAP////8AAABQAP///wAAAV4AAAE2AAAA"
 "BAAAAAQAAAAIAAAACPwAAAABAAAAAgAAAAEAAAAOAFQAbwBvAGwAQgBhAHIBAAAAAP////8AAAAAA"
 "AAAAA=="
       SavedViews    "AAAAAgAAAAA="
