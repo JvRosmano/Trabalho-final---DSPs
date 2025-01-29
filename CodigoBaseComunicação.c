@@ -447,16 +447,16 @@ __interrupt void adca1_isr(void)
     EPwm3Regs.TBPHS.bit.TBPHS = 0x0000;
 
     // Transformada de clarke
-    VAlfa = 0.6666666666 * (vpacA - vpacB * 0.5 - vpacC * 0.5);
-    VBeta = 0.5773502691896 * (vpacB - vpacC);
+    vAlfa = 0.6666666666 * (vpacA - vpacB * 0.5 - vpacC * 0.5);
+    vBeta = 0.5773502691896 * (vpacB - vpacC);
 
     iAlfa = 0.6666666666 * (igA - igB * 0.5 - igC * 0.5);
     iBeta = 0.5773502691896 * (igB - igC);
     // Transformada dq
     cos_angulo = cos(angulo);
     sin_angulo = sin(angulo);
-    V_d = (VAlfa * cos_angulo) + (VBeta * sin_angulo);
-    V_q = -(VAlfa * sin_angulo) + (VBeta * cos_angulo);
+    V_d = (vAlfa * cos_angulo) + (vBeta * sin_angulo);
+    V_q = -(vAlfa * sin_angulo) + (vBeta * cos_angulo);
     I_d = (iAlfa * cos_angulo) + (iBeta * sin_angulo);
     I_q = -(iAlfa * sin_angulo) + (iBeta * cos_angulo);
 
