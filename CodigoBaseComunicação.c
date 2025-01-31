@@ -11,6 +11,7 @@ void ConfiguraADCD(void);
 void ConfiguraPWM1(void);
 void ConfiguraPWM2(void);
 void ConfiguraPWM3(void);
+void condicionaSinal(float sinal, int offset, float gain);
 __interrupt void adca1_isr(void);
 
 // Definitions for PWM generation
@@ -21,7 +22,7 @@ __interrupt void adca1_isr(void);
 Uint16 ToggleCount1 = 0, dutyCycle = 750;
 // static int InterruptCount=0;
 
-// Configura��es de funcionamento
+// Configuracoes de funcionamento
 float Period_Timer = 0.0001; // (em sec)
 float tempo = 0, senoide = 0;
 
@@ -38,7 +39,7 @@ float V_d = 0, V_q = 0, cos_angulo = 0, sin_angulo = 0;
 float int_srf = 0, omega = 0, angulo = 0, Kp_pll = 2.97, Ki_pll = 793;
 int16 angulo_saida;
 
-// Vari�veis novas - Plecs
+// Variaveis novas - Plecs
 float sensorA = 0, sensorB = 0, sensorC = 0, sensorD = 0;
 float sensorE = 0, sensorF = 0, sensorG = 0, sensorH = 0;
 float sensorI = 0, sensorJ = 0, sensorK = 0, sensorL = 0;
@@ -52,6 +53,7 @@ float vdc = 0;
 float vAlfa = 0, vBeta = 0, iAlfa = 0, iBeta = 0;
 float I_d = 0, I_q = 0;
 float Flag_PWM = 0;
+float erro_id = 0, erro_iq = 0, inte_id = 0, inte_iq = 0, ud_ref = 0, uq_ref = 0;
 
 void main(void)
 {
@@ -93,7 +95,7 @@ void main(void)
     // Initialize the PIE vector table
     InitPieVectTable();
 
-    // Configura��o da interrup��o
+    // Configuraco da interrupcao
     EALLOW;
     PieVectTable.ADCA1_INT = &adca1_isr; // Function for ADCA interrupt 1
     EDIS;
@@ -140,11 +142,11 @@ void ConfiguraGpio(void)
 
     GpioCtrlRegs.GPBDIR.bit.GPIO59 = 0; // input
     GpioCtrlRegs.GPBPUD.bit.GPIO59 = 0; // Habilita Pull-up
-    GpioCtrlRegs.GPBINV.bit.GPIO59 = 0; // N�o inverter
+    GpioCtrlRegs.GPBINV.bit.GPIO59 = 0; // Nao inverter
 
     EDIS;
 
-    GpioDataRegs.GPASET.bit.GPIO31 = 1; // Devido a conex�o dos LEDs
+    GpioDataRegs.GPASET.bit.GPIO31 = 1; // Devido a conexao dos LEDs
     GpioDataRegs.GPBSET.bit.GPIO34 = 1; // Ativar os pinos apagam os LEDs
 }
 
@@ -289,11 +291,11 @@ void ConfiguraADCD(void)
 void ConfiguraPWM1(void)
 {
     EALLOW;
-    ClkCfgRegs.PERCLKDIVSEL.bit.EPWMCLKDIV = 1; // Ver pag. 355! e � o default...
+    ClkCfgRegs.PERCLKDIVSEL.bit.EPWMCLKDIV = 1; // Ver pag. 355! e  o default...
 
     EPwm1Regs.TBCTL.bit.HSPCLKDIV = 0; // TBCLK pre-scaler = /1
 
-    EPwm1Regs.TBCTL.bit.CTRMODE = 2; // Modo Up-down (sim�trico)
+    EPwm1Regs.TBCTL.bit.CTRMODE = 2; // Modo Up-down (simetrico)
 
     EPwm1Regs.TBPRD = PWM_TBPRD; // Set timer period
 
@@ -303,7 +305,7 @@ void ConfiguraPWM1(void)
     EDIS;
 
     // Set actions
-    EPwm1Regs.AQCTLA.bit.CAU = AQ_SET;
+    EPwm1Regs.AQCTLA.bit.CAU = AQ_SET; // TROCADO
     EPwm1Regs.AQCTLA.bit.CAD = AQ_CLEAR;
 
     // Active Low PWMs - Setup Deadband
@@ -319,11 +321,11 @@ void ConfiguraPWM1(void)
 void ConfiguraPWM2(void)
 {
     EALLOW;
-    ClkCfgRegs.PERCLKDIVSEL.bit.EPWMCLKDIV = 1; // Ver pag. 355! e � o default...
+    ClkCfgRegs.PERCLKDIVSEL.bit.EPWMCLKDIV = 1; // Ver pag. 355! e  o default...
 
     EPwm2Regs.TBCTL.bit.HSPCLKDIV = 0; // TBCLK pre-scaler = /1
 
-    EPwm2Regs.TBCTL.bit.CTRMODE = 2; // Modo Up-down (sim�trico)
+    EPwm2Regs.TBCTL.bit.CTRMODE = 2; // Modo Up-down (simetrico)
 
     EPwm2Regs.TBPRD = PWM_TBPRD; // Set timer period
 
@@ -349,11 +351,11 @@ void ConfiguraPWM2(void)
 void ConfiguraPWM3(void)
 {
     EALLOW;
-    ClkCfgRegs.PERCLKDIVSEL.bit.EPWMCLKDIV = 1; // Ver pag. 355! e � o default...
+    ClkCfgRegs.PERCLKDIVSEL.bit.EPWMCLKDIV = 1; // Ver pag. 355! e  o default...
 
     EPwm3Regs.TBCTL.bit.HSPCLKDIV = 0; // TBCLK pre-scaler = /1
 
-    EPwm3Regs.TBCTL.bit.CTRMODE = 2; // Modo Up-down (sim�trico)
+    EPwm3Regs.TBCTL.bit.CTRMODE = 2; // Modo Up-down (simetrico)
 
     EPwm3Regs.TBPRD = PWM_TBPRD; // Set timer period
 
@@ -422,19 +424,26 @@ __interrupt void adca1_isr(void)
 
     sensorM = AdcdResultRegs.ADCRESULT0; // ADCIN14
 
-    igA = sensorA;
-    igB = sensorB;
-    igC = sensorC;
-    vcapA = sensorD;
-    vcapB = sensorE;
-    vcapC = sensorF;
-    itA = sensorG;
-    itB = sensorH;
-    itC = sensorI;
-    vpacA = sensorJ;
-    vpacB = sensorK;
-    vpacC = sensorL;
-    vdc = sensorM;
+    // V_teste = (AdcaResultRegs.ADCRESULT0 - 2048);
+    // V = (float)(V_teste)*0.09765625;  //(180/2048)
+
+    igA = condicionaSinal(sensorA, 2048, 0.048828125);
+    igB = condicionaSinal(sensorB, 2048, 0.048828125);
+    igC = condicionaSinal(sensorC, 2048, 0.048828125);
+
+    vcapA = condicionaSinal(sensorD, 2048, 0.09765625);
+    vcapB = condicionaSinal(sensorE, 2048, 0.09765625);
+    vcapC = condicionaSinal(sensorF, 2048, 0.09765625);
+
+    itA = condicionaSinal(sensorG, 2048, 0.048828125);
+    itB = condicionaSinal(sensorH, 2048, 0.048828125);
+    itC = condicionaSinal(sensorI, 2048, 0.048828125);
+
+    vpacA = condicionaSinal(sensorJ, 2048, 0.09765625);
+    vpacB = condicionaSinal(sensorK, 2048, 0.09765625);
+    vpacC = condicionaSinal(sensorL, 2048, 0.09765625);
+
+    vdc = condicionaSinal(sensorM, 0, 0.244140625);
 
     // Update PWMs
 
@@ -477,6 +486,26 @@ __interrupt void adca1_isr(void)
     //
     //    DacaRegs.DACVALS.all = (Uint16)(angulo_saida);
     //
+
+    // Realiza controle
+    // Erros
+    erro_id = 20 - I_d;
+    erro_iq = 0 - I_q;
+    // Integradores
+    inte_id += erro_id * Period_Timer;
+    inte_iq += erro_iq * Period_Timer;
+    // Ação de controle
+    ud_ref = 2 * erro_id + 600 * inte_id - I_q * 0.00125 * 377 + V_d;
+    uq_ref = 2 * erro_iq + 600 * inte_iq + I_d * 0.00125 * 377 + V_q;
+
+    vAlfa = ud_ref * cos_angulo - uq_ref * sin_angulo;
+    vBeta = ud_ref * sin_angulo + uq_ref * cos_angulo;
     AdcaRegs.ADCINTFLGCLR.bit.ADCINT1 = 1; // Clear ADC INT1 flag
     PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;
+}
+
+float condicionaSinal(float sinal, int offset, float gain)
+{
+    sinal = sinal - offset;
+    return sinal * gain;
 }
