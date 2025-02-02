@@ -1,7 +1,7 @@
 /*
  *  Utils.h
  *  Copyright (C) 2025
- *  João Vitor de M.G. Rosmaninho <jvrosmaninho@ufmg.br>,
+ *  JoÃ£o Vitor de M.G. Rosmaninho <jvrosmaninho@ufmg.br>,
  *  Gustavo Miranda Auler <gustavoauler@ufmg.br>,
  *
  *  Version 1.0 - API with the following implemented function:
@@ -21,8 +21,9 @@
 #ifndef UTILS_H_
 #define UTILS_H_
 #include "F28x_Project.h"
+#include "math.h"
 
-// Período de amostragem
+// PerÃ­odo de amostragem
 #define DELT 0.0001
 // Definicoes da geracao do PWM
 #define PWM_TBPRD 5000 // Define a freq. de amostragem PWMTBPRD = (10000*2500)/freq_desejada   (10kHz => 2500) [pag. 1914]
@@ -52,10 +53,10 @@ typedef struct
 } Park;
 
 float CondicionaSinal(Uint16 sinal, Uint16 offset, float gain);
-void clarkeTransform(*Clarke clarke, float a, float b, float c);
-void parkTransform(Park *park, Clarke clarke, float angulo);
-void inverseClarkeTransform(Park park, Clarke *clarke);
-void inverseParkTransform(Clarke clarke, float *a, float *b, float *c);
-void executePLL(Park park, float *omega, float *angulo);
+void clarkeTransform(Clarke *clarke, float a, float b, float c);
+void parkTransform(Park *park, Clarke *clarke, float angulo);
+void inverseParkTransform(Park *park, Clarke *clarke);
+void inverseClarkeTransform(Clarke *clarke, float *a, float *b, float *c);
+void executePLL(Park *park, float *omega, float *angulo);
 
 #endif /* UTILS_H_ */

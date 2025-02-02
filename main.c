@@ -130,21 +130,21 @@ __interrupt void adca1_isr(void)
     clarkeTransform(&I_Clarke, igA, igB, igC);
 
     // Transformada de Park
-    parkTransform(&V_Park, V_Clarke, angulo);
-    parkTransform(&I_Park, I_Clarke, angulo);
+    parkTransform(&V_Park, &V_Clarke, angulo);
+    parkTransform(&I_Park, &I_Clarke, angulo);
 
     // PLL
-    executePLL(V_Park, &omega, &angulo);
+    executePLL(&V_Park, &omega, &angulo);
     angulo_saida = angulo * 600;
 
     // Extrai resultado do angulo do PLL
     DacaRegs.DACVALS.all = (Uint16)(angulo_saida);
 
     // Realiza controle
-    inverseParkTransform(I_Park, &U_Clarke);
+    inverseParkTransform(&I_Park, &U_Clarke);
 
     // Transformda de Clarke inversa
-    inverseClarkeTransform(U_Clarke, &ua, &ub, &uc);
+    inverseClarkeTransform(&U_Clarke, &ua, &ub, &uc);
 
     // Update PWMs
 
