@@ -26,6 +26,7 @@
  */
 
 #include "Peripherals.h"
+#include "Utils.h"
 
 void ConfiguraDAC()
 {
