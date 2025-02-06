@@ -18,8 +18,8 @@ float vpacA = 0, vpacB = 0, vpacC = 0;
 float vdc = 0, vdcAnterior = 0;
 float vdc_filter = 0;
 // Variaveis das transformadas
- Clarke I_Clarke, V_Clarke, U_Clarke;
- Park I_Park, V_Park;
+Clarke I_Clarke, V_Clarke, U_Clarke;
+Park I_Park, V_Park;
 // Variaveis manipuladas no controle
 float Vdc_U = 311, Vdc_Ref = 450;
 float iq_ref = 0, id_ref = 0;
@@ -53,9 +53,9 @@ void main(void)
     InitGpio();
 
     EALLOW;
-        GpioCtrlRegs.GPADIR.bit.GPIO6 = 1; // Corrente
-        GpioCtrlRegs.GPADIR.bit.GPIO7 = 1; // Switch rede
-        GpioCtrlRegs.GPADIR.bit.GPIO8 = 1; // Switch Bypass
+    GpioCtrlRegs.GPADIR.bit.GPIO6 = 1; // Corrente
+    GpioCtrlRegs.GPADIR.bit.GPIO7 = 1; // Switch rede
+    GpioCtrlRegs.GPADIR.bit.GPIO8 = 1; // Switch Bypass
     EDIS;
 
     InitEPwm1Gpio(); // Lembrar do F2837xD_EPwm.c (EPWM1)
@@ -158,42 +158,27 @@ __interrupt void adca1_isr(void)
     // PLL
     executePLL(&V_Park, &omega, &angulo);
 
-
     // Realiza controle
     // PLL estabilizou
-    if(V_Park.D > 170){
+    if (V_Park.D > 170)
+    {
         GpioDataRegs.GPASET.bit.GPIO7 = 1; // Conectou a rede
 
-        if (vdc_filter > 300 && GpioDataRegs.GPADAT.bit.GPIO8 == 0 ){
+        if (vdc_filter > 300 && GpioDataRegs.GPADAT.bit.GPIO8 == 0)
+        {
 
             GpioDataRegs.GPASET.bit.GPIO8 = 1; // Conectou a rede
         }
-        if (tempo > 15 && GpioDataRegs.GPADAT.bit.GPIO6 == 0){
+        if (tempo > 15 && GpioDataRegs.GPADAT.bit.GPIO6 == 0)
+        {
             GpioDataRegs.GPASET.bit.GPIO6 = 1;
         }
-//        Mudar de estado
-
-//
-//        if(Vdc_U < Vdc_Ref){
-//
-//            Vdc_U += 0.001;
-//        }
-//        else if(Vdc_U >= Vdc_Ref)
-//        {
-//            Vdc_U = Vdc_Ref;
-//        }
-//
-//        float erro_vdc = -1 * (Vdc_U * Vdc_U - vdc * vdc);
-//        static float inte_vdc = 0;
-//        inte_vdc += erro_vdc * DELT;
-//
-//        id_ref = erro_vdc * 0.00001396*10 + inte_vdc * 0.0004*100;
+        //        Mudar de estado
 
         dcVoltageControl(&id_ref, &Vdc_U, vdc, Vdc_Ref);
         currentControl(&I_Park, id_ref, iq_ref, &ud_ref, &uq_ref);
         inverseParkTransform(&U_Clarke, vdc, ud_ref, uq_ref);
         inverseClarkeTransform(&U_Clarke, &ua, &ub, &uc);
-
 
         // Update PWMs
         EPwm1Regs.CMPA.bit.CMPA = pwmConvert(ua);
