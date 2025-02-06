@@ -23,11 +23,12 @@
 // VariÃ¡veis de interesse nas transformaÃ§Ãµes
 float cos_angulo = 0, sin_angulo = 0;
 float int_srf = 0;
-float int_id = 0, int_iq = 0;
+float int_id = 0, int_iq = 0, int_vdc = 0;
 
-float CondicionaSinal(Uint16 sinal, Uint16 offset, float gain)
+float CondicionaSinal(Uint16 sinal, int offset, float gain)
 {
-    return (sinal - offset) * gain;
+    int aux = sinal - offset;
+    return (float) aux * gain;
 }
 
 void clarkeTransform(Clarke *clarke, float a, float b, float c)
@@ -50,19 +51,10 @@ void inverseClarkeTransform(Clarke *clarke, float *a, float *b, float *c)
     *c = -clarke->alfa * 0.5 - 0.8660254037844 * clarke->beta;
 }
 
-void inverseParkTransform(Park *park, Clarke *clarke)
+void inverseParkTransform(Clarke *clarke, float vdc, float udRef, float uqRef)
 {
-    float erro_id = Id_REF - park->D;
-    float erro_iq = Iq_REF - park->Q;
-    // Integradores
-    int_id += erro_id * DELT;
-    int_iq += erro_iq * DELT;
-    // Acao de controle
-    float ud_ref = Kp_CONT * erro_id + Ki_CONT * int_id; // Possibilidade de feedfoward
-    float uq_ref = Kp_CONT * erro_iq + Ki_CONT * int_iq;
-    // Transformada de Park inversa
-    clarke->alfa = (ud_ref * cos_angulo) - (uq_ref * sin_angulo);
-    clarke->beta = (ud_ref * sin_angulo) + (uq_ref * cos_angulo);
+    clarke->alfa = (2./vdc) * ((udRef * cos_angulo) - (uqRef * sin_angulo));
+    clarke->beta = (2./vdc) * ((udRef * sin_angulo) + (uqRef * cos_angulo));
 }
 
 void executePLL(Park *park, float *omega, float *angulo)
@@ -89,3 +81,32 @@ Uint16 convertSine2PWM(float u){
 }
 
 
+void dcVoltageControl(float *idRef, float *Vdc_U, float vdc, float vdcRef){
+    *Vdc_U = (*Vdc_U < vdcRef) ? (*Vdc_U + 0.001) : vdcRef;
+
+    float erro_vdc = -1 * ((*Vdc_U) * (*Vdc_U) - vdc * vdc);
+    int_vdc += erro_vdc * DELT;
+    *idRef = Kp_VDC*(erro_vdc) + Ki_VDC * (int_vdc);
+}
+
+
+void currentControl(Park *park, float idRef, float iqRef, float *udRef, float *uqRef){
+    float erro_id = idRef - park->D;
+    float erro_iq = iqRef - park->Q;
+    // Integradores
+    int_id += erro_id * DELT;
+    int_iq += erro_iq * DELT;
+    // A��o de controle
+    *udRef = Kp_CONT * erro_id + Ki_CONT * int_id; //Possibilidade de feedfoward
+    *uqRef = Kp_CONT * erro_iq + Ki_CONT * int_iq;
+}
+
+
+Uint16 pwmConvert(float u){
+    return (Uint16)((-u + 1) * PWM_TBPRD/2.);
+}
+
+
+void LPFilter(float *anterior, float atual, float alfa){
+    *anterior = alfa*(*anterior) + (1-alfa)*(atual);
+}

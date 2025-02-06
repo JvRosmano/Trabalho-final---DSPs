@@ -5,23 +5,25 @@
 // #include "stateMachine.h"
 
 // Sensores (Leem do ADCResultsRegs)
-volatile Uint16 sensorA = 0, sensorB = 0, sensorC = 0, sensorD = 0;
-volatile Uint16 sensorE = 0, sensorF = 0, sensorG = 0, sensorH = 0;
-volatile Uint16 sensorI = 0, sensorJ = 0, sensorK = 0, sensorL = 0;
-volatile Uint16 sensorM = 0;
+Uint16 sensorA = 0, sensorB = 0, sensorC = 0, sensorD = 0;
+Uint16 sensorE = 0, sensorF = 0, sensorG = 0, sensorH = 0;
+Uint16 sensorI = 0, sensorJ = 0, sensorK = 0, sensorL = 0;
+Uint16 sensorM = 0;
 
 // Variaveis medidas da planta
-volatile float igA = 0, igB = 0, igC = 0;
-volatile float vcapA = 0, vcapB = 0, vcapC = 0;
-volatile float itA = 0, itB = 0, itC = 0;
-volatile float vpacA = 0, vpacB = 0, vpacC = 0;
-volatile float vdc = 0;
-
-// Variáveis das transformadas
-// Clarke I_Clarke, V_Clarke, U_Clarke;
-// Park I_Park, V_Park;
-//// Variaveis manipuladas no controle
-
+float igA = 0, igB = 0, igC = 0;
+float vcapA = 0, vcapB = 0, vcapC = 0;
+float itA = 0, itB = 0, itC = 0;
+float vpacA = 0, vpacB = 0, vpacC = 0;
+float vdc = 0, vdcAnterior = 0;
+float vdc_filter = 0;
+// Variaveis das transformadas
+ Clarke I_Clarke, V_Clarke, U_Clarke;
+ Park I_Park, V_Park;
+// Variaveis manipuladas no controle
+float Vdc_U = 311, Vdc_Ref = 450;
+float iq_ref = 0, id_ref = 0;
+float uq_ref = 0, ud_ref = 0;
 // PLL
 float omega = 0, angulo = 0;
 int16 angulo_saida;
@@ -49,6 +51,12 @@ void main(void)
 
     // Passo 2 - Inicializa GPIO
     InitGpio();
+
+    EALLOW;
+        GpioCtrlRegs.GPADIR.bit.GPIO6 = 1; // Corrente
+        GpioCtrlRegs.GPADIR.bit.GPIO7 = 1; // Switch rede
+        GpioCtrlRegs.GPADIR.bit.GPIO8 = 1; // Switch Bypass
+    EDIS;
 
     InitEPwm1Gpio(); // Lembrar do F2837xD_EPwm.c (EPWM1)
     InitEPwm2Gpio();
@@ -117,50 +125,81 @@ __interrupt void adca1_isr(void)
     sensorM = AdcdResultRegs.ADCRESULT0; // ADCIN14
 
     // Conversao de bit para valor real das variaveis
-    igA = CondicionaSinal(sensorA, 2048, 0.048828125);
-    igB = CondicionaSinal(sensorB, 2048, 0.048828125);
-    igC = CondicionaSinal(sensorC, 2048, 0.048828125);
+
+    igA = CondicionaSinal(sensorA, 2048, 0.48828125);
+
+    igB = CondicionaSinal(sensorB, 2048, 0.48828125);
+    igC = CondicionaSinal(sensorC, 2048, 0.48828125);
 
     vcapA = CondicionaSinal(sensorD, 2048, 0.09765625);
     vcapB = CondicionaSinal(sensorE, 2048, 0.09765625);
     vcapC = CondicionaSinal(sensorF, 2048, 0.09765625);
 
-    itA = CondicionaSinal(sensorG, 2048, 0.048828125);
-    itB = CondicionaSinal(sensorH, 2048, 0.048828125);
-    itC = CondicionaSinal(sensorI, 2048, 0.048828125);
+    itA = CondicionaSinal(sensorG, 2048, 0.48828125);
+    itB = CondicionaSinal(sensorH, 2048, 0.48828125);
+    itC = CondicionaSinal(sensorI, 2048, 0.48828125);
 
     vpacA = CondicionaSinal(sensorJ, 2048, 0.09765625);
     vpacB = CondicionaSinal(sensorK, 2048, 0.09765625);
     vpacC = CondicionaSinal(sensorL, 2048, 0.09765625);
 
-    vdc = CondicionaSinal(sensorM, 0, 0.244140625);
+    vdc = CondicionaSinal(sensorM, 0, 0.2442002);
 
-    //    // Transformada de Clarke
-    //    clarkeTransform(&V_Clarke, vpacA, vpacB, vpacC);
-    //    clarkeTransform(&I_Clarke, igA, igB, igC);
-    //
-    //    // Transformada de Park
-    //    parkTransform(&V_Park, &V_Clarke, angulo);
-    //    parkTransform(&I_Park, &I_Clarke, angulo);
-    //
-    //    // PLL
-    //    executePLL(&V_Park, &omega, &angulo);
-    //    angulo_saida = angulo * 600;
-    //
-    //    // Extrai resultado do angulo do PLL
-    //    DacaRegs.DACVALS.all = (Uint16)(angulo_saida);
-    //
-    //    // Realiza controle
-    //    inverseParkTransform(&I_Park, &U_Clarke);
-    //
-    //    // Transformda de Clarke inversa
-    //    inverseClarkeTransform(&U_Clarke, &ua, &ub, &uc);
-    //
-    //    // Update PWMs
-    //
-    //    EPwm1Regs.CMPA.bit.CMPA = DUTYCYCLE;
-    //    EPwm2Regs.CMPA.bit.CMPA = DUTYCYCLE;
-    //    EPwm3Regs.CMPA.bit.CMPA = DUTYCYCLE;
+    LPFilter(&vdc_filter, vdc, 0.99252);
+
+    // Transformada de Clarke
+    clarkeTransform(&V_Clarke, vpacA, vpacB, vpacC);
+    clarkeTransform(&I_Clarke, igA, igB, igC);
+
+    // Transformada de Park
+    parkTransform(&V_Park, &V_Clarke, angulo);
+    parkTransform(&I_Park, &I_Clarke, angulo);
+
+    // PLL
+    executePLL(&V_Park, &omega, &angulo);
+
+
+    // Realiza controle
+    // PLL estabilizou
+    if(V_Park.D > 170){
+        GpioDataRegs.GPASET.bit.GPIO7 = 1; // Conectou a rede
+
+        if (vdc_filter > 300 && GpioDataRegs.GPADAT.bit.GPIO8 == 0 ){
+
+            GpioDataRegs.GPASET.bit.GPIO8 = 1; // Conectou a rede
+        }
+        if (tempo > 15 && GpioDataRegs.GPADAT.bit.GPIO6 == 0){
+            GpioDataRegs.GPASET.bit.GPIO6 = 1;
+        }
+//        Mudar de estado
+
+//
+//        if(Vdc_U < Vdc_Ref){
+//
+//            Vdc_U += 0.001;
+//        }
+//        else if(Vdc_U >= Vdc_Ref)
+//        {
+//            Vdc_U = Vdc_Ref;
+//        }
+//
+//        float erro_vdc = -1 * (Vdc_U * Vdc_U - vdc * vdc);
+//        static float inte_vdc = 0;
+//        inte_vdc += erro_vdc * DELT;
+//
+//        id_ref = erro_vdc * 0.00001396*10 + inte_vdc * 0.0004*100;
+
+        dcVoltageControl(&id_ref, &Vdc_U, vdc, Vdc_Ref);
+        currentControl(&I_Park, id_ref, iq_ref, &ud_ref, &uq_ref);
+        inverseParkTransform(&U_Clarke, vdc, ud_ref, uq_ref);
+        inverseClarkeTransform(&U_Clarke, &ua, &ub, &uc);
+
+
+        // Update PWMs
+        EPwm1Regs.CMPA.bit.CMPA = pwmConvert(ua);
+        EPwm2Regs.CMPA.bit.CMPA = pwmConvert(ub);
+        EPwm3Regs.CMPA.bit.CMPA = pwmConvert(uc);
+    }
 
     AdcaRegs.ADCINTFLGCLR.bit.ADCINT1 = 1; // Clear ADC INT1 flag
     PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;

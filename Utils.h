@@ -37,8 +37,11 @@
 // Controle
 #define Id_REF 20
 #define Iq_REF 0
-#define Kp_CONT 0.1
-#define Ki_CONT 100
+#define Kp_CONT 2.2
+#define Ki_CONT 200
+
+#define Ki_VDC 0.04
+#define Kp_VDC 0.0001396
 
 typedef struct
 {
@@ -52,12 +55,15 @@ typedef struct
     float Q;
 } Park;
 
-float CondicionaSinal(Uint16 sinal, Uint16 offset, float gain);
+float CondicionaSinal(Uint16 sinal, int offset, float gain);
 void clarkeTransform(Clarke *clarke, float a, float b, float c);
 void parkTransform(Park *park, Clarke *clarke, float angulo);
-void inverseParkTransform(Park *park, Clarke *clarke);
+void inverseParkTransform(Clarke *clarke, float vdc, float udRef, float uqRef);
 void inverseClarkeTransform(Clarke *clarke, float *a, float *b, float *c);
 void executePLL(Park *park, float *omega, float *angulo);
+void dcVoltageControl(float *idRef, float *Vdc_U, float vdc, float vdcRef);
+void currentControl(Park *park, float idRef, float iqRef, float *udRef, float *uqRef);
 Uint16 convertSine2PWM(float u);
-
+Uint16 pwmConvert(float u);
+void LPFilter(float *anterior, float atual, float alfa);
 #endif /* UTILS_H_ */
