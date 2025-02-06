@@ -17,7 +17,7 @@ float itA = 0, itB = 0, itC = 0;
 float vpacA = 0, vpacB = 0, vpacC = 0;
 float vdc = 0;
 
-// Variáveis das transformadas
+// Variaveis das transformadas
 Clarke I_Clarke, V_Clarke, U_Clarke;
 Park I_Park, V_Park;
 // Variaveis manipuladas no controle
@@ -151,17 +151,20 @@ __interrupt void adca1_isr(void)
     DacaRegs.DACVALS.all = (Uint16)(angulo_saida);
 
     // Realiza controle
-    inverseParkTransform(&I_Park, &U_Clarke);
+    if (tempo > 2)
+    {
 
-    // Transformda de Clarke inversa
-    inverseClarkeTransform(&U_Clarke, &ua, &ub, &uc);
+        inverseParkTransform(&I_Park, &U_Clarke);
 
-    // Update PWMs
+        // Transformda de Clarke inversa
+        inverseClarkeTransform(&U_Clarke, &ua, &ub, &uc);
 
-    EPwm1Regs.CMPA.bit.CMPA = DUTYCYCLE;
-    EPwm2Regs.CMPA.bit.CMPA = DUTYCYCLE;
-    EPwm3Regs.CMPA.bit.CMPA = DUTYCYCLE;
+        // Update PWMs
 
+        EPwm1Regs.CMPA.bit.CMPA = convertSine2PWM(ua);
+        EPwm2Regs.CMPA.bit.CMPA = convertSine2PWM(ub);
+        EPwm3Regs.CMPA.bit.CMPA = convertSine2PWM(uc);
+    }
     AdcaRegs.ADCINTFLGCLR.bit.ADCINT1 = 1; // Clear ADC INT1 flag
     PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;
 }

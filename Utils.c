@@ -81,3 +81,11 @@ void executePLL(Park *park, float *omega, float *angulo)
         *angulo -= 6.28318530;
     }
 }
+
+Uint16 convertSine2PWM(float u){
+
+    return (Uint16)((u + 0.5) * PWM_TBPRD);
+
+}
+
+

@@ -58,5 +58,6 @@ void parkTransform(Park *park, Clarke *clarke, float angulo);
 void inverseParkTransform(Park *park, Clarke *clarke);
 void inverseClarkeTransform(Clarke *clarke, float *a, float *b, float *c);
 void executePLL(Park *park, float *omega, float *angulo);
+Uint16 convertSine2PWM(float u);
 
 #endif /* UTILS_H_ */
