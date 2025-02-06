@@ -2,25 +2,25 @@
 #include "math.h"
 #include "Peripherals.h"
 #include "Utils.h"
-#include "stateMachine.h"
+// #include "stateMachine.h"
 
 // Sensores (Leem do ADCResultsRegs)
-Uint16 sensorA = 0, sensorB = 0, sensorC = 0, sensorD = 0;
-Uint16 sensorE = 0, sensorF = 0, sensorG = 0, sensorH = 0;
-Uint16 sensorI = 0, sensorJ = 0, sensorK = 0, sensorL = 0;
-Uint16 sensorM = 0;
+volatile Uint16 sensorA = 0, sensorB = 0, sensorC = 0, sensorD = 0;
+volatile Uint16 sensorE = 0, sensorF = 0, sensorG = 0, sensorH = 0;
+volatile Uint16 sensorI = 0, sensorJ = 0, sensorK = 0, sensorL = 0;
+volatile Uint16 sensorM = 0;
 
 // Variaveis medidas da planta
-float igA = 0, igB = 0, igC = 0;
-float vcapA = 0, vcapB = 0, vcapC = 0;
-float itA = 0, itB = 0, itC = 0;
-float vpacA = 0, vpacB = 0, vpacC = 0;
-float vdc = 0;
+volatile float igA = 0, igB = 0, igC = 0;
+volatile float vcapA = 0, vcapB = 0, vcapC = 0;
+volatile float itA = 0, itB = 0, itC = 0;
+volatile float vpacA = 0, vpacB = 0, vpacC = 0;
+volatile float vdc = 0;
 
-// Variaveis das transformadas
-Clarke I_Clarke, V_Clarke, U_Clarke;
-Park I_Park, V_Park;
-// Variaveis manipuladas no controle
+// Variáveis das transformadas
+// Clarke I_Clarke, V_Clarke, U_Clarke;
+// Park I_Park, V_Park;
+//// Variaveis manipuladas no controle
 
 // PLL
 float omega = 0, angulo = 0;
@@ -28,15 +28,15 @@ int16 angulo_saida;
 // Transformada inversa de Clarke
 float ua = 0, ub = 0, uc = 0;
 
-// Máquina de estados
-StateMachine stateMachine;
-// Declaracao de Funcoes
-void App_init(StateMachine *machine);
-void App_transPLL2SHUNT(void);
-void App_transSHUNT2BYPASS(void);
-void App_transBYPASS2DCBUS(void);
-void App_transDCBUS2WORKING(void);
-void App_transAnyToError(void);
+//// Máquina de estados
+// StateMachine stateMachine;
+//// Declaracao de Funcoes
+// void App_init(StateMachine *machine);
+// void App_transPLL2SHUNT(void);
+// void App_transSHUNT2BYPASS(void);
+// void App_transBYPASS2DCBUS(void);
+// void App_transDCBUS2WORKING(void);
+// void App_transAnyToError(void);
 __interrupt void adca1_isr(void);
 
 void main(void)
@@ -94,7 +94,7 @@ __interrupt void adca1_isr(void)
     static float tempo = 0;
     tempo += DELT; // Incrementa tempo
     // Executa estados
-    SM_main(&stateMachine);
+    //    SM_main(&stateMachine);
     // Gera senoide
     DacbRegs.DACVALS.all = (Uint16)(2048 + 2000 * sin(2 * 3.141592 * 60 * tempo));
 
@@ -135,63 +135,60 @@ __interrupt void adca1_isr(void)
 
     vdc = CondicionaSinal(sensorM, 0, 0.244140625);
 
-    // Transformada de Clarke
-    clarkeTransform(&V_Clarke, vpacA, vpacB, vpacC);
-    clarkeTransform(&I_Clarke, igA, igB, igC);
+    //    // Transformada de Clarke
+    //    clarkeTransform(&V_Clarke, vpacA, vpacB, vpacC);
+    //    clarkeTransform(&I_Clarke, igA, igB, igC);
+    //
+    //    // Transformada de Park
+    //    parkTransform(&V_Park, &V_Clarke, angulo);
+    //    parkTransform(&I_Park, &I_Clarke, angulo);
+    //
+    //    // PLL
+    //    executePLL(&V_Park, &omega, &angulo);
+    //    angulo_saida = angulo * 600;
+    //
+    //    // Extrai resultado do angulo do PLL
+    //    DacaRegs.DACVALS.all = (Uint16)(angulo_saida);
+    //
+    //    // Realiza controle
+    //    inverseParkTransform(&I_Park, &U_Clarke);
+    //
+    //    // Transformda de Clarke inversa
+    //    inverseClarkeTransform(&U_Clarke, &ua, &ub, &uc);
+    //
+    //    // Update PWMs
+    //
+    //    EPwm1Regs.CMPA.bit.CMPA = DUTYCYCLE;
+    //    EPwm2Regs.CMPA.bit.CMPA = DUTYCYCLE;
+    //    EPwm3Regs.CMPA.bit.CMPA = DUTYCYCLE;
 
-    // Transformada de Park
-    parkTransform(&V_Park, &V_Clarke, angulo);
-    parkTransform(&I_Park, &I_Clarke, angulo);
-
-    // PLL
-    executePLL(&V_Park, &omega, &angulo);
-    angulo_saida = angulo * 600;
-
-    // Extrai resultado do angulo do PLL
-    DacaRegs.DACVALS.all = (Uint16)(angulo_saida);
-
-    // Realiza controle
-    if (tempo > 2)
-    {
-
-        inverseParkTransform(&I_Park, &U_Clarke);
-
-        // Transformda de Clarke inversa
-        inverseClarkeTransform(&U_Clarke, &ua, &ub, &uc);
-
-        // Update PWMs
-
-        EPwm1Regs.CMPA.bit.CMPA = convertSine2PWM(ua);
-        EPwm2Regs.CMPA.bit.CMPA = convertSine2PWM(ub);
-        EPwm3Regs.CMPA.bit.CMPA = convertSine2PWM(uc);
-    }
     AdcaRegs.ADCINTFLGCLR.bit.ADCINT1 = 1; // Clear ADC INT1 flag
     PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;
 }
 
-void App_init(StateMachine *machine)
-{
-    // check parameters
-    assert(NULL != machine);
-    SM_init(machine);
-    machine->transPLL2SHUNT = ((TransitionFunc)((void *)App_transPLL2SHUNT));
-    machine->transSHUNT2BYPASS = ((TransitionFunc)((void *)App_transSHUNT2BYPASS));
-    machine->transBYPASS2DCBUS = ((TransitionFunc)((void *)App_transBYPASS2DCBUS));
-    machine->transDCBUS2WORKING = ((TransitionFunc)((void *)App_transDCBUS2WORKING));
-    machine->transAnyToError = ((TransitionFunc)((void *)App_transAnyToError));
-}
-void App_transPLL2SHUNT(void)
-{
-}
-void App_transSHUNT2BYPASS(void)
-{
-}
-void App_transBYPASS2DCBUS(void)
-{
-}
-void App_transDCBUS2WORKING(void)
-{
-}
-void App_transAnyToError(void)
-{
-}
+// void App_init(StateMachine *machine)
+//{
+//     // check parameters
+//     assert(NULL != machine);
+//     SM_init(machine);
+//     machine->transPLL2SHUNT = ((TransitionFunc)((void *)App_transPLL2SHUNT));
+//     machine->transSHUNT2BYPASS = ((TransitionFunc)((void *)App_transSHUNT2BYPASS));
+//     machine->transBYPASS2DCBUS = ((TransitionFunc)((void *)App_transBYPASS2DCBUS));
+//     machine->transDCBUS2WORKING = ((TransitionFunc)((void *)App_transDCBUS2WORKING));
+//     machine->transAnyToError = ((TransitionFunc)((void *)App_transAnyToError));
+// }
+// void App_transPLL2SHUNT(void)
+//{
+// }
+// void App_transSHUNT2BYPASS(void)
+//{
+// }
+// void App_transBYPASS2DCBUS(void)
+//{
+// }
+// void App_transDCBUS2WORKING(void)
+//{
+// }
+// void App_transAnyToError(void)
+//{
+// }
