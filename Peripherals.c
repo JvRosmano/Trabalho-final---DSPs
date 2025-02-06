@@ -1,7 +1,7 @@
 /*
  *  Peripherals.c
  *  Copyright (C) 2024
- *  João Vitor de M.G. Rosmaninho <jvrosmaninho@ufmg.br>,
+ *  JoÃ£o Vitor de M.G. Rosmaninho <jvrosmaninho@ufmg.br>,
  *  Gustavo Miranda Auler <gustavoauler@ufmg.br>,
  *
  *  Version 1.0 - API with the following implemented function:
@@ -41,26 +41,22 @@ void ConfiguraDAC()
 
 void ConfiguraADC(void)
 {
-    EALLOW;
-    // Habilita interrupcao
-    AdcaRegs.ADCINTSEL1N2.bit.INT1E = 1; // Enable INT1 flag
     // Configura cada canal AD
     ConfiguraADCA();
     ConfiguraADCB();
     ConfiguraADCC();
     ConfiguraADCD();
-
-    EDIS;
 }
 
 void ConfiguraADCA()
 {
+    EALLOW;
     AdcaRegs.ADCCTL2.bit.PRESCALE = 6; // Set ADCCLK divider to /4
     AdcSetMode(ADC_ADCA, ADC_RESOLUTION_12BIT, ADC_SIGNALMODE_SINGLE);
     AdcaRegs.ADCCTL1.bit.ADCPWDNZ = 1; // Power up the ADC
 
     AdcaRegs.ADCSOC0CTL.bit.CHSEL = 2;   // ADCINA2
-    AdcaRegs.ADCSOC0CTL.bit.ACQPS = 14;  // sample duration of 20 SYSCLK cycles
+    AdcaRegs.ADCSOC0CTL.bit.ACQPS = 19;  // sample duration of 20 SYSCLK cycles
     AdcaRegs.ADCSOC0CTL.bit.TRIGSEL = 5; // ePWM1 SOCA
 
     AdcaRegs.ADCSOC1CTL.bit.CHSEL = 3;   // SOC1 will convert pin A3
@@ -74,10 +70,16 @@ void ConfiguraADCA()
     AdcaRegs.ADCSOC3CTL.bit.CHSEL = 5;   // SOC3 will convert pin A5
     AdcaRegs.ADCSOC3CTL.bit.ACQPS = 14;  // Sample window is 100 SYSCLK cycles
     AdcaRegs.ADCSOC3CTL.bit.TRIGSEL = 5; // ePWM1 SOCA
+
+    // Habilita interrupcao
+    AdcaRegs.ADCINTSEL1N2.bit.INT1E = 1; // Enable INT1 flag
+
+    EDIS;
 }
 
 void ConfiguraADCB()
 {
+    EALLOW;
     AdcbRegs.ADCCTL2.bit.PRESCALE = 6; // Set ADCCLK divider to /4
     AdcSetMode(ADC_ADCB, ADC_RESOLUTION_12BIT, ADC_SIGNALMODE_SINGLE);
     AdcbRegs.ADCCTL1.bit.ADCPWDNZ = 1; // Power up the ADC
@@ -97,10 +99,13 @@ void ConfiguraADCB()
     AdcbRegs.ADCSOC3CTL.bit.CHSEL = 5;   // SOC3 will convert pin A5
     AdcbRegs.ADCSOC3CTL.bit.ACQPS = 14;  // Sample window is 100 SYSCLK cycles
     AdcbRegs.ADCSOC3CTL.bit.TRIGSEL = 5; // ePWM1 SOCA
+
+    EDIS;
 }
 
 void ConfiguraADCC(void)
 {
+    EALLOW;
     AdccRegs.ADCCTL2.bit.PRESCALE = 6; // Set ADCCLK divider to /4
     AdcSetMode(ADC_ADCC, ADC_RESOLUTION_12BIT, ADC_SIGNALMODE_SINGLE);
     AdccRegs.ADCCTL1.bit.ADCPWDNZ = 1; // Power up the ADC
@@ -120,10 +125,13 @@ void ConfiguraADCC(void)
     AdccRegs.ADCSOC3CTL.bit.CHSEL = 5;   // SOC3 will convert pin A5
     AdccRegs.ADCSOC3CTL.bit.ACQPS = 14;  // Sample window is 100 SYSCLK cycles
     AdccRegs.ADCSOC3CTL.bit.TRIGSEL = 5; // ePWM1 SOCA
+
+    EDIS;
 }
 
 void ConfiguraADCD()
 {
+    EALLOW;
     AdcdRegs.ADCCTL2.bit.PRESCALE = 6; // Set ADCCLK divider to /4
     AdcSetMode(ADC_ADCD, ADC_RESOLUTION_12BIT, ADC_SIGNALMODE_SINGLE);
     AdcdRegs.ADCCTL1.bit.ADCPWDNZ = 1; // Power up the ADC
@@ -131,6 +139,8 @@ void ConfiguraADCD()
     AdcdRegs.ADCSOC0CTL.bit.CHSEL = 14;  // SOC0 will convert pin A2
     AdcdRegs.ADCSOC0CTL.bit.ACQPS = 14;  // Sample window is 100 SYSCLK cycles
     AdcdRegs.ADCSOC0CTL.bit.TRIGSEL = 5; // ePWM1 SOCA
+
+    EDIS;
 }
 
 void ConfiguraPWM1()
@@ -222,5 +232,3 @@ void ConfiguraPWM3()
     EPwm3Regs.DBFED.all = 250;
     EPwm3Regs.DBRED.all = 250;
 }
-
-
