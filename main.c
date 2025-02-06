@@ -2,6 +2,7 @@
 #include "math.h"
 #include "Peripherals.h"
 #include "Utils.h"
+#include "stateMachine.h"
 
 // Sensores (Leem do ADCResultsRegs)
 Uint16 sensorA = 0, sensorB = 0, sensorC = 0, sensorD = 0;
@@ -27,7 +28,15 @@ int16 angulo_saida;
 // Transformada inversa de Clarke
 float ua = 0, ub = 0, uc = 0;
 
+// Máquina de estados
+StateMachine stateMachine;
 // Declaracao de Funcoes
+void App_init(StateMachine *machine);
+void App_transPLL2SHUNT(void);
+void App_transSHUNT2BYPASS(void);
+void App_transBYPASS2DCBUS(void);
+void App_transDCBUS2WORKING(void);
+void App_transAnyToError(void);
 __interrupt void adca1_isr(void);
 
 void main(void)
@@ -84,7 +93,8 @@ __interrupt void adca1_isr(void)
 
     static float tempo = 0;
     tempo += DELT; // Incrementa tempo
-
+    // Executa estados
+    SM_main(&stateMachine);
     // Gera senoide
     DacbRegs.DACVALS.all = (Uint16)(2048 + 2000 * sin(2 * 3.141592 * 60 * tempo));
 
@@ -154,4 +164,31 @@ __interrupt void adca1_isr(void)
 
     AdcaRegs.ADCINTFLGCLR.bit.ADCINT1 = 1; // Clear ADC INT1 flag
     PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;
+}
+
+void App_init(StateMachine *machine)
+{
+    // check parameters
+    assert(NULL != machine);
+    SM_init(machine);
+    machine->transPLL2SHUNT = ((TransitionFunc)((void *)App_transPLL2SHUNT));
+    machine->transSHUNT2BYPASS = ((TransitionFunc)((void *)App_transSHUNT2BYPASS));
+    machine->transBYPASS2DCBUS = ((TransitionFunc)((void *)App_transBYPASS2DCBUS));
+    machine->transDCBUS2WORKING = ((TransitionFunc)((void *)App_transDCBUS2WORKING));
+    machine->transAnyToError = ((TransitionFunc)((void *)App_transAnyToError));
+}
+void App_transPLL2SHUNT(void)
+{
+}
+void App_transSHUNT2BYPASS(void)
+{
+}
+void App_transBYPASS2DCBUS(void)
+{
+}
+void App_transDCBUS2WORKING(void)
+{
+}
+void App_transAnyToError(void)
+{
 }
