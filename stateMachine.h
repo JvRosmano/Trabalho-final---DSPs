@@ -1,10 +1,11 @@
 #ifndef APPLICATION_STATEMACHINE_H_
 #define APPLICATION_STATEMACHINE_H_
 #include <stdint.h>
-#include <assert.h>
+//#include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include "F28x_Project.h"
+#include "Utils.h"
 
 typedef enum
 {
@@ -26,24 +27,12 @@ typedef enum
     SM_GOTO_ERROR
 } SmCommands;
 
-typedef void (*TransitionFunc)(void *funcRef);
-
 typedef struct
 {
     States currentState;
-    States nextState;
     SmCommands command;
-    TransitionFunc transPLL2SHUNT;
-    TransitionFunc transSHUNT2BYPASS;
-    TransitionFunc transBYPASS2DCBUS;
-    TransitionFunc transDCBUS2WORKING;
-    TransitionFunc transAnyToError;
-    void *transRef;
 } StateMachine;
 
 void SM_init(StateMachine *);
-void SM_main(StateMachine *);
-void SM_processCommand(StateMachine *, const SmCommands);
-void SM_autoStateChange(StateMachine *);
-static void SM_clearError(StateMachine *);
+int SM_changeState(StateMachine *, const SmCommands);
 #endif /* APPLICATION_STATEMACHINE_H_ */

@@ -2,7 +2,7 @@
 #include "math.h"
 #include "Peripherals.h"
 #include "Utils.h"
-// #include "stateMachine.h"
+#include "stateMachine.h"
 
 // Sensores (Leem do ADCResultsRegs)
 Uint16 sensorA = 0, sensorB = 0, sensorC = 0, sensorD = 0;
@@ -21,7 +21,7 @@ float vdc_filter = 0;
  Clarke I_Clarke, V_Clarke, U_Clarke;
  Park I_Park, V_Park;
 // Variaveis manipuladas no controle
-float Vdc_U = 311, Vdc_Ref = 450;
+float Vdc_U = 311, Vdc_Ref = 311;
 float iq_ref = 0, id_ref = 0;
 float uq_ref = 0, ud_ref = 0;
 // PLL
@@ -30,15 +30,17 @@ int16 angulo_saida;
 // Transformada inversa de Clarke
 float ua = 0, ub = 0, uc = 0;
 
-//// MÃ¡quina de estados
-// StateMachine stateMachine;
-//// Declaracao de Funcoes
-// void App_init(StateMachine *machine);
-// void App_transPLL2SHUNT(void);
-// void App_transSHUNT2BYPASS(void);
-// void App_transBYPASS2DCBUS(void);
-// void App_transDCBUS2WORKING(void);
-// void App_transAnyToError(void);
+// MÃ¡quina de estados
+ StateMachine stateMachine;
+
+// Flags de estado
+ int dcbus = 0, erro = 0;
+// Declaracao de Funcoes
+ void App_transPLL2SHUNT();
+ void App_transSHUNT2BYPASS();
+ void App_transBYPASS2DCBUS();
+ void App_transDCBUS2WORKING();
+ void App_transAnyToError();
 __interrupt void adca1_isr(void);
 
 void main(void)
@@ -47,7 +49,7 @@ void main(void)
     // Passo 1 - Inicializa sistema de controle
 
     // PLL, WatchDog, enable Peripheral Clocks
-    InitSysCtrl();
+                                                                                    InitSysCtrl();
 
     // Passo 2 - Inicializa GPIO
     InitGpio();
@@ -67,7 +69,8 @@ void main(void)
     ConfiguraPWM3();
     ConfiguraDAC();
     ConfiguraADC();
-
+    SM_init(&stateMachine);
+    //App_init(&stateMachine);
     // Passo 3 - Clear nas interrupcoes e inicializar PIE vector table
     // Disabilita interrupcoes da CPU
     DINT;
@@ -102,7 +105,6 @@ __interrupt void adca1_isr(void)
     static float tempo = 0;
     tempo += DELT; // Incrementa tempo
     // Executa estados
-    //    SM_main(&stateMachine);
     // Gera senoide
     DacbRegs.DACVALS.all = (Uint16)(2048 + 2000 * sin(2 * 3.141592 * 60 * tempo));
 
@@ -162,33 +164,9 @@ __interrupt void adca1_isr(void)
     // Realiza controle
     // PLL estabilizou
     if(V_Park.D > 170){
-        GpioDataRegs.GPASET.bit.GPIO7 = 1; // Conectou a rede
-
-        if (vdc_filter > 300 && GpioDataRegs.GPADAT.bit.GPIO8 == 0 ){
-
-            GpioDataRegs.GPASET.bit.GPIO8 = 1; // Conectou a rede
+        if(SM_changeState(&stateMachine, SM_GOTO_SHUNT) == 1){
+            App_transPLL2SHUNT();
         }
-        if (tempo > 15 && GpioDataRegs.GPADAT.bit.GPIO6 == 0){
-            GpioDataRegs.GPASET.bit.GPIO6 = 1;
-        }
-//        Mudar de estado
-
-//
-//        if(Vdc_U < Vdc_Ref){
-//
-//            Vdc_U += 0.001;
-//        }
-//        else if(Vdc_U >= Vdc_Ref)
-//        {
-//            Vdc_U = Vdc_Ref;
-//        }
-//
-//        float erro_vdc = -1 * (Vdc_U * Vdc_U - vdc * vdc);
-//        static float inte_vdc = 0;
-//        inte_vdc += erro_vdc * DELT;
-//
-//        id_ref = erro_vdc * 0.00001396*10 + inte_vdc * 0.0004*100;
-
         dcVoltageControl(&id_ref, &Vdc_U, vdc, Vdc_Ref);
         currentControl(&I_Park, id_ref, iq_ref, &ud_ref, &uq_ref);
         inverseParkTransform(&U_Clarke, vdc, ud_ref, uq_ref);
@@ -199,35 +177,57 @@ __interrupt void adca1_isr(void)
         EPwm1Regs.CMPA.bit.CMPA = pwmConvert(ua);
         EPwm2Regs.CMPA.bit.CMPA = pwmConvert(ub);
         EPwm3Regs.CMPA.bit.CMPA = pwmConvert(uc);
+        // Aguarda transição do estado
+        // Verifica se atingiu a tensão
+        if(GpioDataRegs.GPADAT.bit.GPIO7 == 1 && vdc_filter > 300){
+
+            if(SM_changeState(&stateMachine, SM_GOTO_BYPASS) == 1){
+                App_transSHUNT2BYPASS();
+            }
+            if(GpioDataRegs.GPADAT.bit.GPIO8 == 1){
+                if(dcbus == 1){
+                    if(SM_changeState(&stateMachine, SM_GOTO_DCBUS) == 1){
+                        App_transBYPASS2DCBUS();
+                    }
+                    if(vdc >= (Vdc_Ref-1) && SM_changeState(&stateMachine, SM_GOTO_WORKING) == 1){
+                        App_transDCBUS2WORKING();
+                    }
+
+                }
+            }
+        }
     }
 
+    if(erro == 1){
+        if(SM_changeState(&stateMachine, SM_GOTO_ERROR) == 1){
+            App_transAnyToError();
+
+        }
+    }
     AdcaRegs.ADCINTFLGCLR.bit.ADCINT1 = 1; // Clear ADC INT1 flag
     PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;
 }
 
-// void App_init(StateMachine *machine)
-//{
-//     // check parameters
-//     assert(NULL != machine);
-//     SM_init(machine);
-//     machine->transPLL2SHUNT = ((TransitionFunc)((void *)App_transPLL2SHUNT));
-//     machine->transSHUNT2BYPASS = ((TransitionFunc)((void *)App_transSHUNT2BYPASS));
-//     machine->transBYPASS2DCBUS = ((TransitionFunc)((void *)App_transBYPASS2DCBUS));
-//     machine->transDCBUS2WORKING = ((TransitionFunc)((void *)App_transDCBUS2WORKING));
-//     machine->transAnyToError = ((TransitionFunc)((void *)App_transAnyToError));
-// }
-// void App_transPLL2SHUNT(void)
-//{
-// }
-// void App_transSHUNT2BYPASS(void)
-//{
-// }
-// void App_transBYPASS2DCBUS(void)
-//{
-// }
-// void App_transDCBUS2WORKING(void)
-//{
-// }
-// void App_transAnyToError(void)
-//{
-// }
+ void App_transPLL2SHUNT()
+{
+     GpioDataRegs.GPASET.bit.GPIO7 = 1; // Conectou a rede
+ }
+ void App_transSHUNT2BYPASS()
+{
+     GpioDataRegs.GPASET.bit.GPIO8 = 1; // Bypass
+ }
+ void App_transBYPASS2DCBUS()
+{
+     Vdc_Ref = 450;
+ }
+ void App_transDCBUS2WORKING()
+{
+     GpioDataRegs.GPASET.bit.GPIO6 = 1; // Working
+ }
+ void App_transAnyToError()
+{
+     dcbus = 0;
+     GpioDataRegs.GPACLEAR.bit.GPIO6 = 1; // Not Working
+     GpioDataRegs.GPACLEAR.bit.GPIO7 = 1; // Desconectou da rede
+     GpioDataRegs.GPACLEAR.bit.GPIO8 = 1; // Fechou Bypass
+ }
